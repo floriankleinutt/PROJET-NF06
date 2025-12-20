@@ -19,13 +19,14 @@ typedef struct fileAttente {
     char nom[20];
     int num_commande;
     int total_commande;
-    FA* ptr;
+    struct fileAttente* ptr;
 } FA;
 
 void afficherRestaurants(int nb_restaurants, Restaurant restaurants[4]){
         // AFFICHAGE
     for (int i = 0; i < nb_restaurants; i++) {
         printf("Restaurant %s\n", restaurants[i].nationalite);
+        printf("Nombre d'items dans le menu : %d\n", restaurants[i].count);
         for (int j = 0; j < restaurants[i].count; j++) {
             MenuItem *it = &restaurants[i].items[j];
             printf("  - %s (%s) : %.2f (stock %d)\n",
@@ -72,6 +73,10 @@ Restaurant* ecrireRestaurants(FILE *file){
             sscanf(ligne, "%9[^;];%29[^;];%f;%d", item->type, item->nom, &item->prix, &item->stock);
             restaurants[current].count++;
         }
+    }
+
+    for (int i=0;i<4;i++){
+
     }
     return restaurants;
 }
