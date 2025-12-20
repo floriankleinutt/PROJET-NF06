@@ -1,0 +1,30 @@
+﻿
+Italien;;;
+Entree;bruschetta;7;20
+Plat;lasagne;16;12
+Plat;pizza margherita;15;10
+Dessert;tiramisu;8;15
+Boisson;eau;3;100
+Boisson;expresso;2.5;-1
+;;;
+Japonais;;;
+Entree;edamane;5.5;30
+Plat;ramen shoyu;12.9;15
+Plat;ramen tonkotsu;13.9;10
+Dessert;mochi;4.5;8
+Boisson;the vert;3;40
+;;;
+Americain;;;
+Entree;petit burger;5.60;12
+Plat;moyen burger;8.90;53
+Plat;grand burger;70.99;5
+Dessert;bombe nucleaire;1328000;5277
+Boisson;cheddar fondue;1;1000000
+;;;
+Francais;;;
+Entree;foie gras;7.5;20
+Plat;baguette;1.50;20000
+Plat;andouillette 5A;18.50;3
+Fromage;comte AOP 18 mois;3.20;25
+Boisson;champagne;3.50;20
+;;;
