@@ -1,29 +1,217 @@
-#include<stdio.h>
-#include<stdlib.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+#include <stdbool.h>
 
+/* Structs ------------------------------------------------------------------------------------------------------------------------------------------ */
 typedef struct MenuItem {
-    char type[10];
-    char nom[30];
+    char  type[10];
+    char  nom[30];
     float prix;
-    int stock;
+    int   stock;
 } MenuItem;
 
 typedef struct Restaurant{
-    char nationalite[10];
-    int count;
+    char     nationalite[10];
+    int      count;
     MenuItem items[15];
+    float    totalVentes;
 } Restaurant;
 
-typedef struct fileAttente {
-    char nom[20];
-    int num_commande;
-    int total_commande;
-    struct fileAttente* ptr;
-} FA;
+typedef struct node {
+    char         nomRestaurant[10];
+    int          numeroCommande;
+    float        totalCommande;
+    struct node* next;
+} node;
 
+/* Fonctions ---------------------------------------------------------------------------------------------------------------------------------------- */
+void        afficherRestaurants (int nb_restaurants, Restaurant restaurants[4]);
+Restaurant* lireRestaurants     (FILE *file);
+
+// Operations sur la file
+node* addNode     (node* head, char nomRestaurant[], int numeroCommande, float totalCommande); // enqueue()
+node* removeFirst (node* head);                                                                // dequeue()
+bool  isEmpty     (node* head);
+void  printNode   (node* ptr);
+void  printList   (node *head);
+
+/* Main --------------------------------------------------------------------------------------------------------------------------------------------- */
+int main() {
+    // Recupere les informations des restaurants dans le fichier
+    FILE *file = fopen("Fichier_Restaurants.csv", "r");
+    if (file == NULL) {
+        printf("Erreur: Impossible de lire le fichier.\n");
+        exit(1);
+    }
+    Restaurant* restaurants=NULL;
+    restaurants = lireRestaurants(file);
+    fclose(file);
+    //afficherRestaurants(4, restaurants); /* Pour le debug */
+
+    // Initialisation de la file
+    node* head = NULL;
+
+    // Initialisation pour les clients
+    int numeroCommande = 0;
+
+    // Initialisation pour l'admin
+    int nombreTotalCommandeServies = 0;
+    for (int i=0; i<4; i++) { restaurants[i].totalVentes = 0;}
+
+    // Boucle principale
+    bool continuer = true;
+    int  choix;
+    while (continuer){
+        printf("\n\n======= Selectionnez votre action =======");
+        printf(  "\n1 : Profil client"                        );
+        printf(  "\n2 : Profil administrateur"                );
+        printf(  "\n3 : Quitter"                              );
+
+        printf("\n\nVotre choix : "                           );
+        scanf(" %d", &choix);
+        
+        switch (choix) {
+        case 1: // Profil client
+            printf("\n============= Profil Client =============");
+            printf("\nListe des restaurants :"                  );
+            for (int i=0; i<4; i++) { 
+            printf("\n%d : %s", i+1, restaurants[i].nationalite ); }
+            
+            printf("\n\nVotre choix : "                         );
+            int choixClientRestaurant;
+            scanf(" %d", &choixClientRestaurant);
+            if (choixClientRestaurant < 0 || choixClientRestaurant > 4) {
+                printf("\nChoix invalide T-T");
+                break;
+            }
+            choixClientRestaurant--; // Realigne le choix avec l'index
+
+            // Affiche le menu du restaurant selectionne et permet de faire sa commande
+            MenuItem commande[20];
+            int      indexCommande        = 0;
+            float    total                = 0;
+            char     choixClientContinuer = 'o';
+            while (choixClientContinuer == 'o') {
+                printf("\nMenu :");
+                for (int i=0; i<restaurants[choixClientRestaurant].count; i++) {
+                printf(  "\n%d : %s (%s)", i+1, restaurants[choixClientRestaurant].items[i].nom, restaurants[choixClientRestaurant].items[i].type); }
+
+                printf("\n\nVotre choix : ");
+                int choixClientPlat;
+                scanf(" %d", &choixClientPlat);
+                if (choixClientPlat < 0 || choixClientPlat > restaurants[choixClientRestaurant].count) {
+                    printf("\nChoix invalide T-T");
+                    continue;
+                }
+                choixClientPlat--; // Realigne le choix avec l'index
+
+                // Regarde si les stocks sont suffisants sachant qu'on n'actualise les stocks qu'après la validation de la commande
+                int stockMinimumRequis = 1;
+                for (int i=0; i<indexCommande; i++) { 
+                    if (restaurants[choixClientRestaurant].items[choixClientPlat].nom == commande[i].nom) { stockMinimumRequis++; } 
+                }
+                // Ajoute le plat a la commande si disponible
+                if (restaurants[choixClientRestaurant].items[choixClientPlat].stock >= stockMinimumRequis || restaurants[choixClientRestaurant].items[choixClientPlat].stock == -1 /* stocks illimites */) {
+                    commande[indexCommande] = restaurants[choixClientRestaurant].items[choixClientPlat];
+                    total += restaurants[choixClientRestaurant].items[choixClientPlat].prix;
+                    indexCommande++;
+                } else { printf("\nPlus de stock ^^'"); }
+                
+                printf("\nTotal : %.2f euros", total);
+                printf("\nSouhaitez-vous autre chose avec ceci ? (o/n) : ");
+                scanf(" %c", &choixClientContinuer);
+            }
+            // Affiche la commande
+            printf(  "\nCommande :"                         );
+            for (int i=0; i<indexCommande; i++) {
+            printf("\n%s (%s) : %.2f euros", commande[i].nom, commande[i].type, commande[i].prix); }
+            
+            printf("\n\nTotal : %.2f euros"          , total);
+            printf(  "\nValidez-vous la commande ? (o/n) : ");
+            char choixClientValider;
+            scanf(" %c", &choixClientValider);
+            // Si la commande est validee, on actualise les stocks et on cree le node
+            if (choixClientValider == 'o') {
+                // Actualise les stocks
+                for (int i=0; i<indexCommande; i++) {
+                    for (int j=0; j<restaurants[choixClientRestaurant].count; j++) {
+                        if (restaurants[choixClientRestaurant].items[j].stock > 0 /* securite sur le stock */) {
+                            if (restaurants[choixClientRestaurant].items[j].nom == commande[i].nom) { restaurants[choixClientRestaurant].items[j].stock--; } 
+                        } else {
+                            printf("\nErreur ! stock insuffisant");
+                        }
+                    }
+                }
+                // Actualise les ventes totales des restaurants
+                restaurants[choixClientRestaurant].totalVentes += total;
+
+                // Ajoute le node
+                head = addNode(head, restaurants[choixClientRestaurant].nationalite, numeroCommande, total);
+                numeroCommande++; // Incremente pour la prochaine commande
+            } else {
+                printf("\n\nCommande annulee");
+            }
+            break;
+        
+        case 2: // Profil Admin
+            printf("\n\n========= Profil Administrateur =========");
+            printf(  "\n1 : Servir une commande"                  );
+            printf(  "\n2 : Consulter nombre de commande servies" );
+            printf(  "\n3 : Consulter le total des ventes"        );
+
+            printf("\n\nVotre choix : "                           );
+            int choixAdmin;
+            scanf(" %d", &choixAdmin);
+
+            switch (choixAdmin) {
+            case 1: // Servir une commande
+                if (head == NULL) { printf("\nPas de commande a servir"); }
+                else {
+                    // Cherche a quel restaurant attribuer la vente
+                    for (int i=0; i<4; i++) {
+                        if (head->nomRestaurant == restaurants[i].nationalite) { restaurants[i].totalVentes += head->totalCommande; }
+                    }
+                    printf("\nCommande %d servie pour %.2f euros !", head->numeroCommande, head->totalCommande);
+                    head = removeFirst(head); // Actualise la head
+                    nombreTotalCommandeServies++;
+                }
+                break;
+            
+            case 2: // Nombre commandes
+                printf("\n%d commandes servies.", nombreTotalCommandeServies);
+                break;
+            
+            case 3: // Chiffre d'affaires
+                for (int i=0; i<4; i++) {
+                    printf("\n%s a vendu pour un total de : %.2f euros.", restaurants[i].nationalite, restaurants[i].totalVentes);
+                }
+                break;
+            
+            default: // Le nombre choisi n'est pas entre 1 et 3
+                printf("\nChoix invalide T-T");
+                break;
+            }
+            break;
+
+        case 3: // Quitter
+            printf("Au revoir :)\n\n");
+            continuer = false;
+            break;
+        
+        default: // Le nombre choisi n'est pas entre 1 et 3
+            printf("\nChoix invalide T-T");
+            break;
+        }
+    }
+
+    return 0;
+}
+
+/* Implementations fonctions ------------------------------------------------------------------------------------------------------------------------ */
+/* Operations sur les restaurants */
 void afficherRestaurants(int nb_restaurants, Restaurant restaurants[4]){
-        // AFFICHAGE
+    // AFFICHAGE
     for (int i = 0; i < nb_restaurants; i++) {
         printf("Restaurant %s\n", restaurants[i].nationalite);
         printf("Nombre d'items dans le menu : %d\n", restaurants[i].count);
@@ -36,10 +224,10 @@ void afficherRestaurants(int nb_restaurants, Restaurant restaurants[4]){
     }
 }
 
-Restaurant* ecrireRestaurants(FILE *file){
+Restaurant* lireRestaurants(FILE *file){
     Restaurant *restaurants = (Restaurant *)malloc(4 * sizeof(Restaurant));
     if (restaurants == NULL) {
-        printf("Memory allocation failed\n");
+        printf("\nMemory allocation failed\n");
         exit(1);
     }
     int nb_restaurants = 0;
@@ -81,18 +269,72 @@ Restaurant* ecrireRestaurants(FILE *file){
     return restaurants;
 }
 
-int main() {
-    FILE *file = fopen("Fichier_Restaurants.csv", "r");
-    if (file == NULL) {
-        printf("Erreur: Impossible de lire le fichier.\n");
+/* Operations sur la file */
+// Ajoute un node en bout de file
+node* addNode(node* head, char nomRestaurant[], int numeroCommande, float totalCommande) {
+    // Cherche le bout de la file
+    node* ptr = head;
+    while (ptr != NULL) {
+        ptr = ptr->next;
+    }
+    
+    // Cree le node
+    node* pNew;
+    pNew = (node*)malloc(sizeof(node));
+    if (pNew == NULL) {
+        printf("\nMemory allocation failed!");
         exit(1);
     }
-    Restaurant *ptr=NULL;
-    ptr = ecrireRestaurants(file);
-    afficherRestaurants(4,ptr);
-    fclose(file);
-    return 0;
+    strcpy(pNew->nomRestaurant, nomRestaurant);
+    pNew->numeroCommande      = numeroCommande;
+    pNew->totalCommande       = totalCommande;
+    pNew->next                = NULL;
+
+    // Ajoute le node a la file (devient la head si head est null)
+    if (head == NULL) { head = pNew; }
+    else { ptr->next = pNew; }
+
+    return head;
 }
 
+// Retire le 1er node
+node* removeFirst(node* head) {
+    if (head == NULL) {
+        printf("\nImpossible de retirer le premier noeud car head est null !");
+        return NULL;
+    }
 
+    // Le node suivant devient la head
+    else {
+        node* ptr = head;
+        head      = head->next;
+        free(ptr);
+        return head;
+    }
+}
 
+bool isEmpty (node* head) {
+    if (head == NULL) { return true; }
+    return false;
+}
+
+// Affichages
+void printNode(node* ptr){
+    if (ptr = NULL) { printf("\nLe noeud n'existe pas !"); }
+    else {
+        printf("\nRestaurant : %s"  , ptr->nomRestaurant );
+        printf("\nCommande n° : %d" , ptr->numeroCommande);
+        printf("\nTotal : %.2f"     , ptr->totalCommande , " euros");
+    }
+}
+void printList(node *head){
+    node* ptr = head;
+    if (head == NULL) {
+        printf("\nLa file est vide !");
+        return;
+    }
+    while (ptr != NULL) {
+        printNode(ptr);
+        ptr = ptr->next;
+    }
+}
