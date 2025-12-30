@@ -81,7 +81,7 @@ int main() {
             printf("\n\nVotre choix : "                         );
             int choixClientRestaurant;
             scanf(" %d", &choixClientRestaurant);
-            if (choixClientRestaurant < 0 || choixClientRestaurant > 4) {
+            if (choixClientRestaurant <= 0 || choixClientRestaurant > 4) {
                 printf("\nChoix invalide T-T");
                 break;
             }
@@ -100,7 +100,7 @@ int main() {
                 printf("\n\nVotre choix : ");
                 int choixClientPlat;
                 scanf(" %d", &choixClientPlat);
-                if (choixClientPlat < 0 || choixClientPlat > restaurants[choixClientRestaurant].count) {
+                if (choixClientPlat <= 0 || choixClientPlat > restaurants[choixClientRestaurant].count) {
                     printf("\nChoix invalide T-T");
                     continue;
                 }
@@ -109,7 +109,7 @@ int main() {
                 // Regarde si les stocks sont suffisants sachant qu'on n'actualise les stocks qu'après la validation de la commande
                 int stockMinimumRequis = 1;
                 for (int i=0; i<indexCommande; i++) { 
-                    if (restaurants[choixClientRestaurant].items[choixClientPlat].nom == commande[i].nom) { stockMinimumRequis++; } 
+                    if (strcmp(restaurants[choixClientRestaurant].items[choixClientPlat].nom, commande[i].nom) == 0) { stockMinimumRequis++; } 
                 }
                 // Ajoute le plat a la commande si disponible
                 if (restaurants[choixClientRestaurant].items[choixClientPlat].stock >= stockMinimumRequis || restaurants[choixClientRestaurant].items[choixClientPlat].stock == -1 /* stocks illimites */) {
@@ -132,19 +132,20 @@ int main() {
             char choixClientValider;
             scanf(" %c", &choixClientValider);
             // Si la commande est validee, on actualise les stocks et on cree le node
-            if (choixClientValider == 'o') {
+            if (choixClientValider == 'o' && total != 0) {
                 // Actualise les stocks
-                for (int i=0; i<indexCommande; i++) {
-                    for (int j=0; j<restaurants[choixClientRestaurant].count; j++) {
-                        if (restaurants[choixClientRestaurant].items[j].stock > 0 /* securite sur le stock */) {
-                            if (restaurants[choixClientRestaurant].items[j].nom == commande[i].nom) { restaurants[choixClientRestaurant].items[j].stock--; } 
-                        } else {
-                            printf("\nErreur ! stock insuffisant");
+                for (int i = 0; i < indexCommande; i++) {
+                    for (int j = 0; j < restaurants[choixClientRestaurant].count; j++) {
+                        if (strcmp(restaurants[choixClientRestaurant].items[j].nom, commande[i].nom) == 0) {
+                            if (restaurants[choixClientRestaurant].items[j].stock > 0 /* Securite sur le stock */) {
+                                restaurants[choixClientRestaurant].items[j].stock--;
+                            } else if (restaurants[choixClientRestaurant].items[j].stock == -1) {
+                                // On ne fais rien car stock illimite
+                            } else { printf("\nErreur ! Stock insuffisant pour %s", commande[i].nom); }
+                        break; // Sort de la boucle une fois le plat trouvé
                         }
                     }
                 }
-                // Actualise les ventes totales des restaurants
-                restaurants[choixClientRestaurant].totalVentes += total;
 
                 // Ajoute le node
                 head = addNode(head, restaurants[choixClientRestaurant].nationalite, numeroCommande, total);
@@ -170,7 +171,10 @@ int main() {
                 else {
                     // Cherche a quel restaurant attribuer la vente
                     for (int i=0; i<4; i++) {
-                        if (head->nomRestaurant == restaurants[i].nationalite) { restaurants[i].totalVentes += head->totalCommande; }
+                        if (strcmp(head->nomRestaurant, restaurants[i].nationalite) == 0) {
+                            restaurants[i].totalVentes += head->totalCommande;
+                            break; // Sort une fois le restaurant trouve
+                        }
                     }
                     printf("\nCommande %d servie pour %.2f euros !", head->numeroCommande, head->totalCommande);
                     head = removeFirst(head); // Actualise la head
@@ -205,6 +209,8 @@ int main() {
         }
     }
 
+    // Libere la memoire avant de fermer le programme
+    freeList(head);
     return 0;
 }
 
@@ -263,21 +269,12 @@ Restaurant* lireRestaurants(FILE *file){
         }
     }
 
-    for (int i=0;i<4;i++){
-
-    }
     return restaurants;
 }
 
 /* Operations sur la file */
 // Ajoute un node en bout de file
 node* addNode(node* head, char nomRestaurant[], int numeroCommande, float totalCommande) {
-    // Cherche le bout de la file
-    node* ptr = head;
-    while (ptr != NULL) {
-        ptr = ptr->next;
-    }
-    
     // Cree le node
     node* pNew;
     pNew = (node*)malloc(sizeof(node));
@@ -290,10 +287,17 @@ node* addNode(node* head, char nomRestaurant[], int numeroCommande, float totalC
     pNew->totalCommande       = totalCommande;
     pNew->next                = NULL;
 
-    // Ajoute le node a la file (devient la head si head est null)
-    if (head == NULL) { head = pNew; }
-    else { ptr->next = pNew; }
-
+    // Devient la head si head est null)
+    if (head == NULL) { return pNew; }
+    
+    // Cherche le bout de la file
+    node* ptr = head;
+    while (ptr->next != NULL) {
+        ptr = ptr->next;
+    }
+    
+    // Ajoute le node a la file
+    ptr->next = pNew;
     return head;
 }
 
@@ -316,6 +320,16 @@ node* removeFirst(node* head) {
 bool isEmpty (node* head) {
     if (head == NULL) { return true; }
     return false;
+}
+
+// Libere la memoire de la liste
+void freeList(node* head) {
+    node* current = head;
+    while (current != NULL) {
+        node* next = current->next;
+        free(current);
+        current = next;
+    }
 }
 
 // Affichages
