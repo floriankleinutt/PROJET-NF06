@@ -35,6 +35,7 @@ node* removeFirst (node* head);                                                 
 bool  isEmpty     (node* head);
 void  printNode   (node* ptr);
 void  printList   (node *head);
+void  freeList    (node* head);
 
 /* Main --------------------------------------------------------------------------------------------------------------------------------------------- */
 int main() {
@@ -47,7 +48,7 @@ int main() {
     Restaurant* restaurants=NULL;
     restaurants = lireRestaurants(file);
     fclose(file);
-    //afficherRestaurants(4, restaurants); /* Pour le debug */
+    afficherRestaurants(4, restaurants); /* Pour le debug */
 
     // Initialisation de la file
     node* head = NULL;
